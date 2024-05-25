@@ -58,7 +58,7 @@ def get_gp_camera_proxy(port=None):
 def gp_log_callback(level, domain, string, data=None):
     """Logging callback for gphoto2.
     """
-    LOGGER.getChild('gphoto2').debug(domain.decode("utf-8") + u': ' + string.decode("utf-8"))
+    LOGGER.getChild('gphoto2').debug(domain + u': ' + string)
 
 
 class GpCamera(BaseCamera):
@@ -171,30 +171,9 @@ class GpCamera(BaseCamera):
         return image
 
     def set_config_value(self, section, option, value):
-        """Set camera configuration.
-        """
-        try:
-            LOGGER.debug('Setting option %s/%s=%s', section, option, value)
-            config = self._cam.get_config()
-            child = config.get_child_by_name(section).get_child_by_name(option)
-            if child.get_type() == gp.GP_WIDGET_RADIO:
-                choices = [c for c in child.get_choices()]
-            else:
-                choices = None
-            data_type = type(child.get_value())
-            value = data_type(value)  # Cast value
-            if choices and value not in choices:
-                if value == 'Memory card' and 'card' in choices:
-                    value = 'card'  # Fix for Sony ZV-1
-                elif value == 'Memory card' and 'card+sdram' in choices:
-                    value = 'card+sdram'  # Fix for Sony ILCE-6400
-                else:
-                    LOGGER.warning("Invalid value '%s' for option %s (possible choices: %s), trying to set it anyway",
-                                   value, option, choices)
-            child.set_value(value)
-            self._cam.set_config(config)
-        except gp.GPhoto2Error as ex:
-            LOGGER.error('Unsupported option %s/%s=%s (%s), configure your DSLR manually', section, option, value, ex)
+        # run manually:
+        # gphoto2 --set-config capturetarget="sdram" autofocusdrive="1"
+        pass
 
     def get_config_value(self, section, option):
         """Get camera configuration option.
@@ -295,9 +274,9 @@ class GpCamera(BaseCamera):
         if self.capture_iso != self.preview_iso:
             self.set_config_value('imgsettings', 'iso', self.capture_iso)
 
-        self._captures.append((self._cam.capture(gp.GP_CAPTURE_IMAGE), effect))
+        data = (self._cam.capture(gp.GP_CAPTURE_IMAGE), effect)
         time.sleep(0.3)  # Necessary to let the time for the camera to save the image
-
+        self._captures.append(data)
         if self.capture_iso != self.preview_iso:
             self.set_config_value('imgsettings', 'iso', self.preview_iso)
 
